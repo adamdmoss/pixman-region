@@ -27,7 +27,7 @@ public:
 	PixmanRegion(PixmanRegion const &from_rect) {
 		pixman_region32_init(&m_region);
 		pixman_region32_copy(&m_region,
-				static_cast<pixman_region32_t*>(&from_rect.m_region));
+				const_cast<pixman_region32_t*>(&from_rect.m_region));
 	}
 	PixmanRegion(int x, int y, unsigned int width, unsigned int height) {
 		pixman_region32_init_rect(&m_region, x, y, width, height);
@@ -58,7 +58,7 @@ public:
 		pixman_region32_t result;
 		pixman_region32_intersect(&result,
 				&m_region,
-				static_cast<pixman_region32_t*>(&other.m_region));
+				const_cast<pixman_region32_t*>(&other.m_region));
 		return PixmanRegion(result);
 	}
 
@@ -67,7 +67,7 @@ public:
 		pixman_region32_t result;
 		pixman_region32_union(&result,
 				&m_region,
-				static_cast<pixman_region32_t*>(&other.m_region));
+				const_cast<pixman_region32_t*>(&other.m_region));
 		return PixmanRegion(result);
 	}
 
@@ -76,14 +76,14 @@ public:
 		pixman_region32_t result;
 		pixman_region32_subtract(&result,
 				&m_region,
-				static_cast<pixman_region32_t*>(&other.m_region));
+				const_cast<pixman_region32_t*>(&other.m_region));
 		return PixmanRegion(result);
 	}
 
 	void copyFrom(PixmanRegion const &src)
 	{
 		pixman_region32_copy(&m_region,
-				static_cast<pixman_region32_t*>(&src.m_region));
+				const_cast<pixman_region32_t*>(&src.m_region));
 	}
 
 	void clear()
@@ -94,22 +94,22 @@ public:
 	bool containsPoint(int x, int y) const
 	{
 		return !!pixman_region32_contains_point(
-				static_cast<pixman_region32_t*>(&m_region),
+				const_cast<pixman_region32_t*>(&m_region),
 				x, y, nullptr);
 	}
 
 	bool isEmpty() const
 	{
 		return !pixman_region32_not_empty(
-				static_cast<pixman_region32_t*>(&m_region)
+				const_cast<pixman_region32_t*>(&m_region)
 				);
 	}
 
 	bool isEqual(PixmanRegion const& other) const
 	{
 		return !!pixman_region32_equal(
-				static_cast<pixman_region32_t*>(&m_region),
-				static_cast<pixman_region32_t*>(&other.m_region));
+				const_cast<pixman_region32_t*>(&m_region),
+				const_cast<pixman_region32_t*>(&other.m_region));
 	}
 
 protected:
@@ -117,6 +117,10 @@ protected:
 		pixman_region32_init_rect(&m_region,
 				from_rect.x, from_rect.y,
 				from_rect.width, from_rect.height);
+	}
+	PixmanRegion(pixman_region32_t const &from_region32) {
+		pixman_region32_init(&m_region);
+		copyFrom(from_region32);
 	}
 
 	void freeInternal()
