@@ -39,7 +39,7 @@ public:
 
 	/**********************/
 
-	bool operator== (const PixmanRegion &other) {
+	bool operator== (const PixmanRegion &other) const {
 		return this->isEqual(other);
 	}
 
@@ -53,33 +53,6 @@ public:
 
 	/**********************/
 
-	PixmanRegion intersectRegion(PixmanRegion const& other)
-	{
-		pixman_region32_t result;
-		pixman_region32_intersect(&result,
-				&m_region,
-				const_cast<pixman_region32_t*>(&other.m_region));
-		return PixmanRegion(result);
-	}
-
-	PixmanRegion unionRegion(PixmanRegion const& other)
-	{
-		pixman_region32_t result;
-		pixman_region32_union(&result,
-				&m_region,
-				const_cast<pixman_region32_t*>(&other.m_region));
-		return PixmanRegion(result);
-	}
-
-	PixmanRegion subtractRegion(PixmanRegion const& other)
-	{
-		pixman_region32_t result;
-		pixman_region32_subtract(&result,
-				&m_region,
-				const_cast<pixman_region32_t*>(&other.m_region));
-		return PixmanRegion(result);
-	}
-
 	void copyFrom(PixmanRegion const &src)
 	{
 		pixman_region32_copy(&m_region,
@@ -91,11 +64,60 @@ public:
 		pixman_region32_clear(&m_region);
 	}
 
+	void translate(int xoffset, int yoffset)
+	{
+		pixman_region32_translate(&m_region, xoffset, yoffset);
+	}
+
+	PixmanRegion intersectRegion(PixmanRegion const& other) const
+	{
+		pixman_region32_t result;
+		pixman_region32_init(&result);
+		pixman_region32_intersect(&result,
+				const_cast<pixman_region32_t*>(&m_region),
+				const_cast<pixman_region32_t*>(&other.m_region));
+		return PixmanRegion(result);
+	}
+
+	PixmanRegion unionRegion(PixmanRegion const& other) const
+	{
+		pixman_region32_t result;
+		pixman_region32_init(&result);
+		pixman_region32_union(&result,
+				const_cast<pixman_region32_t*>(&m_region),
+				const_cast<pixman_region32_t*>(&other.m_region));
+		return PixmanRegion(result);
+	}
+
+	PixmanRegion subtractRegion(PixmanRegion const& other) const
+	{
+		pixman_region32_t result;
+		pixman_region32_init(&result);
+		pixman_region32_subtract(&result,
+				const_cast<pixman_region32_t*>(&m_region),
+				const_cast<pixman_region32_t*>(&other.m_region));
+		return PixmanRegion(result);
+	}
+
 	bool containsPoint(int x, int y) const
 	{
 		return !!pixman_region32_contains_point(
 				const_cast<pixman_region32_t*>(&m_region),
 				x, y, nullptr);
+	}
+
+	bool intersects(PixmanRegion const &other) const
+	{
+		PixmanRegion const &intersection =
+				this->intersectRegion(other);
+		return !intersection.isEmpty();
+	}
+
+	bool containsEntirely(PixmanRegion const &other) const
+	{
+		PixmanRegion const &subbed =
+				other.subtractRegion(*this);
+		return subbed.isEmpty();
 	}
 
 	bool isEmpty() const
@@ -120,7 +142,8 @@ protected:
 	}
 	PixmanRegion(pixman_region32_t const &from_region32) {
 		pixman_region32_init(&m_region);
-		copyFrom(from_region32);
+		pixman_region32_copy(&m_region,
+				const_cast<pixman_region32_t*>(&from_region32));
 	}
 
 	void freeInternal()
