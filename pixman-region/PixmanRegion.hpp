@@ -8,15 +8,54 @@
 #ifndef PIXMANREGION_HPP_
 #define PIXMANREGION_HPP_
 
+#include <cassert>
+#include <iterator>
+
 extern "C" {
 #include "pixman-region.h"
 }
 
-/*class PixmanBox32 : pixman_box32_t
+
+class PixmanBox32 : pixman_box32_t
 {
-	PixmanBox32()
-	: x1(0), y1(0), x2(0), y2(0) {}
-};*/
+	PixmanBox32() { x1=y1=x2=y2=0; }
+};
+
+
+// Wraps a raw, not-to-be-freed C array with bounds checking and iterator
+template<typename T>
+class StaticCArray
+{
+public:
+	StaticCArray(T* ptr, size_t n) { m_ptr = ptr; m_size = n; }
+	virtual ~StaticCArray() {};
+
+#if 1
+	T& operator[](size_t idx)
+	{
+		assert(idx < m_size);
+		assert(idx >= 0);
+		return m_ptr[idx];
+	}
+
+	const T& operator[](size_t idx) const
+	{
+		assert(idx < m_size);
+		assert(idx >= 0);
+		return m_ptr[idx];
+	}
+#endif
+
+	size_t size(void) const
+	{
+		return m_size;
+	}
+
+protected:
+	T* m_ptr;
+	size_t m_size;
+};
+
 
 class PixmanRegion {
 public:
@@ -134,6 +173,16 @@ public:
 				const_cast<pixman_region32_t*>(&other.m_region));
 	}
 
+	StaticCArray<pixman_box32_t> getBoxes() const
+	{
+		pixman_box32_t* boxes_ptr;
+		int num_boxes;
+		boxes_ptr = pixman_region32_rectangles(
+				const_cast<pixman_region32_t*>(&m_region),
+				&num_boxes);
+		return StaticCArray<pixman_box32_t>(boxes_ptr,num_boxes);
+	}
+
 protected:
 	PixmanRegion(pixman_rectangle32_t const &from_rect) {
 		pixman_region32_init_rect(&m_region,
@@ -154,5 +203,8 @@ protected:
 private:
 	pixman_region32_t m_region;
 };
+
+
+
 
 #endif /* PIXMANREGION_HPP_ */
