@@ -15,6 +15,8 @@ extern "C" {
 
 class PixmanRegion {
 public:
+	/** CTORS/DTORS *******************/
+
 	PixmanRegion() {
 		pixman_region32_init(&m_region);
 		clear();
@@ -37,7 +39,7 @@ public:
 		this->freeInternal();
 	}
 
-	/**********************/
+	/** OPERATORS ********************/
 
 	bool operator== (const PixmanRegion &other) const {
 		return this->isEqual(other);
@@ -51,24 +53,28 @@ public:
 		return *this;
 	}
 
-	/**********************/
+	/** METHODS ********************/
 
+	// make this region a copy of another
 	void copyFrom(PixmanRegion const &src)
 	{
 		pixman_region32_copy(&m_region,
 				const_cast<pixman_region32_t*>(&src.m_region));
 	}
 
+	// empty a region
 	void clear()
 	{
 		pixman_region32_clear(&m_region);
 	}
 
+	// translate a region by specified offset, in-place
 	void translate(int xoffset, int yoffset)
 	{
 		pixman_region32_translate(&m_region, xoffset, yoffset);
 	}
 
+	// return region which is intersection of this region with other
 	PixmanRegion intersectRegion(PixmanRegion const& other) const
 	{
 		pixman_region32_t result;
@@ -79,6 +85,7 @@ public:
 		return PixmanRegion(result);
 	}
 
+	// return region which is union of this region with other
 	PixmanRegion unionRegion(PixmanRegion const& other) const
 	{
 		pixman_region32_t result;
@@ -89,6 +96,8 @@ public:
 		return PixmanRegion(result);
 	}
 
+	// return region which is a copy of this region with
+	// pieces removed where it overlaps 'other'
 	PixmanRegion subtractRegion(PixmanRegion const& other) const
 	{
 		pixman_region32_t result;
@@ -99,6 +108,7 @@ public:
 		return PixmanRegion(result);
 	}
 
+	// returns whether this region contains point at given x,y
 	bool containsPoint(int x, int y) const
 	{
 		return !!pixman_region32_contains_point(
@@ -106,6 +116,7 @@ public:
 				x, y, nullptr);
 	}
 
+	// returns whether this region intersects other region at all
 	bool intersects(PixmanRegion const &other) const
 	{
 		PixmanRegion const &intersection =
@@ -113,6 +124,7 @@ public:
 		return !intersection.isEmpty();
 	}
 
+	// returns whether this region entirely contains 'other'
 	bool containsEntirely(PixmanRegion const &other) const
 	{
 		PixmanRegion const &subbed =
@@ -120,6 +132,7 @@ public:
 		return subbed.isEmpty();
 	}
 
+	// returns whether this region is empty
 	bool isEmpty() const
 	{
 		return !pixman_region32_not_empty(
@@ -127,6 +140,8 @@ public:
 				);
 	}
 
+	// returns whether this region covers exactly the same
+	// area as 'other'
 	bool isEqual(PixmanRegion const& other) const
 	{
 		return !!pixman_region32_equal(
@@ -144,6 +159,8 @@ public:
 				const_cast<pixman_region32_t*>(&m_region),
 				num_boxes_out);
 	}
+
+	/** END PUBLIC *******************/
 
 protected:
 
