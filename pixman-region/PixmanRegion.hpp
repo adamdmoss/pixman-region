@@ -8,53 +8,9 @@
 #ifndef PIXMANREGION_HPP_
 #define PIXMANREGION_HPP_
 
-#include <cassert>
-#include <iterator>
-
 extern "C" {
 #include "pixman-region.h"
 }
-
-
-class PixmanBox32 : pixman_box32_t
-{
-	PixmanBox32() { x1=y1=x2=y2=0; }
-};
-
-
-// Wraps a raw, not-to-be-freed C array with bounds checking and iterator
-template<typename T>
-class StaticCArray
-{
-public:
-	StaticCArray(T* ptr, size_t n) { m_ptr = ptr; m_size = n; }
-	virtual ~StaticCArray() {};
-
-#if 1
-	T& operator[](size_t idx)
-	{
-		assert(idx < m_size);
-		assert(idx >= 0);
-		return m_ptr[idx];
-	}
-
-	const T& operator[](size_t idx) const
-	{
-		assert(idx < m_size);
-		assert(idx >= 0);
-		return m_ptr[idx];
-	}
-#endif
-
-	size_t size(void) const
-	{
-		return m_size;
-	}
-
-protected:
-	T* m_ptr;
-	size_t m_size;
-};
 
 
 class PixmanRegion {
@@ -70,6 +26,11 @@ public:
 	}
 	PixmanRegion(int x, int y, unsigned int width, unsigned int height) {
 		pixman_region32_init_rect(&m_region, x, y, width, height);
+	}
+	PixmanRegion(pixman_region32_t const &from_region32) {
+		pixman_region32_init(&m_region);
+		pixman_region32_copy(&m_region,
+				const_cast<pixman_region32_t*>(&from_region32));
 	}
 
 	virtual ~PixmanRegion() {
@@ -173,27 +134,18 @@ public:
 				const_cast<pixman_region32_t*>(&other.m_region));
 	}
 
-	StaticCArray<pixman_box32_t> getBoxes() const
+	// Returns pointer to array of boxes that make up the region.
+	// Array should be treated read-only, non-user-freed,
+	// and should not be accessed after further modifications to
+	// this region or region destruction.
+	void getBoxes(const pixman_box32_t **box_list_ptr_out, int *num_boxes_out) const
 	{
-		pixman_box32_t* boxes_ptr;
-		int num_boxes;
-		boxes_ptr = pixman_region32_rectangles(
+		*box_list_ptr_out = pixman_region32_rectangles(
 				const_cast<pixman_region32_t*>(&m_region),
-				&num_boxes);
-		return StaticCArray<pixman_box32_t>(boxes_ptr,num_boxes);
+				num_boxes_out);
 	}
 
 protected:
-	PixmanRegion(pixman_rectangle32_t const &from_rect) {
-		pixman_region32_init_rect(&m_region,
-				from_rect.x, from_rect.y,
-				from_rect.width, from_rect.height);
-	}
-	PixmanRegion(pixman_region32_t const &from_region32) {
-		pixman_region32_init(&m_region);
-		pixman_region32_copy(&m_region,
-				const_cast<pixman_region32_t*>(&from_region32));
-	}
 
 	void freeInternal()
 	{
@@ -205,6 +157,33 @@ private:
 };
 
 
+#ifdef PIMAN_REGION_TEST_MAIN
+#include <cassert>
+void main()
+{
+	PixmanRegion r1(0,0, 10,10);
+	PixmanRegion r2(5,5, 10,10);
+	auto isect = r1.intersectRegion(r2);
+	PixmanRegion sub = r1.subtractRegion(r2);
+	auto uni = r1.unionRegion(r2);
+
+	pixman_box32_t const *box_list_ptr;
+	int num_boxes;
+	sub.getBoxes(&box_list_ptr, &num_boxes);
+	assert(num_boxes == 2);
+	// Note - constants below aren't the only correct solution
+	// but they will be what pixman does, barring big changes to
+	// pixman's internal strategy
+	assert(box_list_ptr[0].x1 == 0);
+	assert(box_list_ptr[0].y1 == 0);
+	assert(box_list_ptr[0].x2 == 10);
+	assert(box_list_ptr[0].y2 == 50);
+	assert(box_list_ptr[1].x1 == 0);
+	assert(box_list_ptr[1].y1 == 5);
+	assert(box_list_ptr[1].x2 == 5);
+	assert(box_list_ptr[1].y2 == 10);
+}
+#endif
 
 
 #endif /* PIXMANREGION_HPP_ */
