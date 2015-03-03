@@ -37,8 +37,7 @@ MIT license, see COPYING
 TODO
 ====
 
-* C++ interface generally untested
-* C++ interface could do more
+* C++ interface not hugely tested
 * Build harness - CMake?
 * Strip more unused pixman interface/implementation away
 * Better unit test and/or examples (there is a weak assertion-
