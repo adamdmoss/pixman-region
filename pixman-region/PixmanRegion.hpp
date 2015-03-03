@@ -21,18 +21,18 @@ public:
 		pixman_region32_init(&m_region);
 		clear();
 	}
-	PixmanRegion(PixmanRegion const &from_rect) {
+	PixmanRegion(PixmanRegion const &from_region) {
 		pixman_region32_init(&m_region);
 		pixman_region32_copy(&m_region,
-				const_cast<pixman_region32_t*>(&from_rect.m_region));
+				const_cast<pixman_region32_t*>(&from_region.m_region));
 	}
 	PixmanRegion(int x, int y, unsigned int width, unsigned int height) {
 		pixman_region32_init_rect(&m_region, x, y, width, height);
 	}
-	PixmanRegion(pixman_region32_t const &from_region32) {
+	PixmanRegion(pixman_region32_t const &from_pixman_region32) {
 		pixman_region32_init(&m_region);
 		pixman_region32_copy(&m_region,
-				const_cast<pixman_region32_t*>(&from_region32));
+				const_cast<pixman_region32_t*>(&from_pixman_region32));
 	}
 
 	virtual ~PixmanRegion() {
