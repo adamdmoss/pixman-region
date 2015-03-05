@@ -26,8 +26,10 @@ public:
 		pixman_region32_copy(&m_region,
 				const_cast<pixman_region32_t*>(&from_region.m_region));
 	}
-	PixmanRegion(int x, int y, unsigned int width, unsigned int height) {
-		pixman_region32_init_rect(&m_region, x, y, width, height);
+	PixmanRegion(int x, int y,
+			unsigned int width, unsigned int height) {
+		pixman_region32_init_rect(&m_region,
+				x, y, width, height);
 	}
 	PixmanRegion(pixman_region32_t const &from_pixman_region32) {
 		pixman_region32_init(&m_region);
@@ -147,6 +149,13 @@ public:
 		return !!pixman_region32_equal(
 				const_cast<pixman_region32_t*>(&m_region),
 				const_cast<pixman_region32_t*>(&other.m_region));
+	}
+
+	pixman_box32_t getExtents()
+	{
+		pixman_box32_t* extents =
+				pixman_region32_extents(&m_region);
+		return *extents; // return copy
 	}
 
 	// Returns pointer to array of boxes that make up the region.
