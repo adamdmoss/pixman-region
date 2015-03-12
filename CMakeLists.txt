@@ -1,0 +1,12 @@
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
+
+PROJECT ( pixman-region CXX C )
+SET ( CMAKE_VERBOSE_MAKEFILE true )
+
+FILE (GLOB PIXMAN_SRC "pixman-src/*" )
+ADD_LIBRARY ( pixman-region STATIC ${PIXMAN_SRC} )
+
+FILE (GLOB PIXMANTEST_SRC "test/*" )
+ADD_EXECUTABLE ( pixman-test ${PIXMANTEST_SRC} )
+INCLUDE_DIRECTORIES( "." )
+TARGET_LINK_LIBRARIES( pixman-test pixman-region )
