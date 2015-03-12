@@ -1,1 +1,0 @@
-clang-3.5 -ggdb pixman-region-test.c util*.c ../Debug/libpixman-region.a  -o region-test  -I .. -lm &&./region-test
