@@ -1,6 +1,8 @@
 PIXMAN-REGION
 =============
 
+<https://github.com/adamdmoss/pixman-region>
+
 This is a library for performing boolean (and other) operations on
 regions (lists of rectangles) - intersection, union, etc.
 
@@ -52,5 +54,5 @@ Adam D. Moss <c@yotes.com>
 UPSTREAM
 ========
 
-This source is based on http://cgit.freedesktop.org/pixman/
+This source is based on <http://cgit.freedesktop.org/pixman/>
 revision 594e6a6c93e92fcfb495e987aec5617f6c37f467
