@@ -774,13 +774,6 @@ clamp (double d)
 }
 
 static double
-blend_channel (double as, double s, double ad, double d,
-                   blend_func_t blend)
-{
-    return clamp ((1 - ad) * s + (1 - as) * d + blend (as, s, ad, d));
-}
-
-static double
 calc_op (pixman_op_t op, double src, double dst, double srca, double dsta)
 {
 #define mult_chan(src, dst, Fa, Fb) MIN ((src) * (Fa) + (dst) * (Fb), 1.0)
