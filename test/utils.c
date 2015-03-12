@@ -546,23 +546,7 @@ aligned_malloc (size_t align, size_t size)
        (((c) >>  8) & 0xff) * 301 +					\
        (((c)      ) & 0xff) * 58) >> 2))
 
-double
-convert_srgb_to_linear (double c)
-{
-    if (c <= 0.04045)
-        return c / 12.92;
-    else
-        return pow ((c + 0.055) / 1.055, 2.4);
-}
 
-double
-convert_linear_to_srgb (double c)
-{
-    if (c <= 0.0031308)
-        return c * 12.92;
-    else
-        return 1.055 * pow (c, 1.0/2.4) - 0.055;
-}
 
 void
 initialize_palette (pixman_indexed_t *palette, uint32_t depth, int is_rgb)
@@ -777,129 +761,6 @@ format_name (pixman_format_code_t format)
 
 typedef double (* blend_func_t) (double as, double s, double ad, double d);
 
-static force_inline double
-blend_multiply (double sa, double s, double da, double d)
-{
-    return d * s;
-}
-
-static force_inline double
-blend_screen (double sa, double s, double da, double d)
-{
-    return d * sa + s * da - s * d;
-}
-
-static force_inline double
-blend_overlay (double sa, double s, double da, double d)
-{
-    if (2 * d < da)
-        return 2 * s * d;
-    else
-        return sa * da - 2 * (da - d) * (sa - s);
-}
-
-static force_inline double
-blend_darken (double sa, double s, double da, double d)
-{
-    s = s * da;
-    d = d * sa;
-
-    if (s > d)
-        return d;
-    else
-        return s;
-}
-
-static force_inline double
-blend_lighten (double sa, double s, double da, double d)
-{
-    s = s * da;
-    d = d * sa;
-
-    if (s > d)
-        return s;
-    else
-        return d;
-}
-
-static force_inline double
-blend_color_dodge (double sa, double s, double da, double d)
-{
-    if (IS_ZERO (d))
-        return 0.0f;
-    else if (d * sa >= sa * da - s * da)
-        return sa * da;
-    else if (IS_ZERO (sa - s))
-        return sa * da;
-    else
-        return sa * sa * d / (sa - s);
-}
-
-static force_inline double
-blend_color_burn (double sa, double s, double da, double d)
-{
-    if (d >= da)
-        return sa * da;
-    else if (sa * (da - d) >= s * da)
-        return 0.0f;
-    else if (IS_ZERO (s))
-        return 0.0f;
-    else
-        return sa * (da - sa * (da - d) / s);
-}
-
-static force_inline double
-blend_hard_light (double sa, double s, double da, double d)
-{
-    if (2 * s < sa)
-        return 2 * s * d;
-    else
-        return sa * da - 2 * (da - d) * (sa - s);
-}
-
-static force_inline double
-blend_soft_light (double sa, double s, double da, double d)
-{
-    if (2 * s <= sa)
-    {
-        if (IS_ZERO (da))
-            return d * sa;
-        else
-            return d * sa - d * (da - d) * (sa - 2 * s) / da;
-    }
-    else
-    {
-        if (IS_ZERO (da))
-        {
-	    return d * sa;
-        }
-        else
-        {
-            if (4 * d <= da)
-                return d * sa + (2 * s - sa) * d * ((16 * d / da - 12) * d / da + 3);
-            else
-                return d * sa + (sqrt (d * da) - d) * (2 * s - sa);
-        }
-    }
-}
-
-static force_inline double
-blend_difference (double sa, double s, double da, double d)
-{
-    double dsa = d * sa;
-    double sda = s * da;
-
-    if (sda < dsa)
-        return dsa - sda;
-    else
-        return sda - dsa;
-}
-
-static force_inline double
-blend_exclusion (double sa, double s, double da, double d)
-{
-    return s * da + d * sa - 2 * d * s;
-}
 
 static double
 clamp (double d)
@@ -1146,82 +1007,6 @@ calc_op (pixman_op_t op, double src, double dst, double srca, double dsta)
 #undef mult_chan
 }
 
-void
-do_composite (pixman_op_t op,
-	      const color_t *src,
-	      const color_t *mask,
-	      const color_t *dst,
-	      color_t *result,
-	      pixman_bool_t component_alpha)
-{
-    color_t srcval, srcalpha;
-
-    static const blend_func_t blend_funcs[] =
-    {
-        blend_multiply,
-        blend_screen,
-        blend_overlay,
-        blend_darken,
-        blend_lighten,
-        blend_color_dodge,
-        blend_color_burn,
-        blend_hard_light,
-        blend_soft_light,
-        blend_difference,
-        blend_exclusion,
-    };
-
-    if (mask == NULL)
-    {
-	srcval = *src;
-
-	srcalpha.r = src->a;
-	srcalpha.g = src->a;
-	srcalpha.b = src->a;
-	srcalpha.a = src->a;
-    }
-    else if (component_alpha)
-    {
-	srcval.r = src->r * mask->r;
-	srcval.g = src->g * mask->g;
-	srcval.b = src->b * mask->b;
-	srcval.a = src->a * mask->a;
-
-	srcalpha.r = src->a * mask->r;
-	srcalpha.g = src->a * mask->g;
-	srcalpha.b = src->a * mask->b;
-	srcalpha.a = src->a * mask->a;
-    }
-    else
-    {
-	srcval.r = src->r * mask->a;
-	srcval.g = src->g * mask->a;
-	srcval.b = src->b * mask->a;
-	srcval.a = src->a * mask->a;
-
-	srcalpha.r = src->a * mask->a;
-	srcalpha.g = src->a * mask->a;
-	srcalpha.b = src->a * mask->a;
-	srcalpha.a = src->a * mask->a;
-    }
-
-    if (op >= PIXMAN_OP_MULTIPLY)
-    {
-        blend_func_t func = blend_funcs[op - PIXMAN_OP_MULTIPLY];
-
-	result->a = srcalpha.a + dst->a - srcalpha.a * dst->a;
-	result->r = blend_channel (srcalpha.r, srcval.r, dst->a, dst->r, func);
-	result->g = blend_channel (srcalpha.g, srcval.g, dst->a, dst->g, func);
-	result->b = blend_channel (srcalpha.b, srcval.b, dst->a, dst->b, func);
-    }
-    else
-    {
-        result->r = calc_op (op, srcval.r, dst->r, srcalpha.r, dst->a);
-        result->g = calc_op (op, srcval.g, dst->g, srcalpha.g, dst->a);
-        result->b = calc_op (op, srcval.b, dst->b, srcalpha.b, dst->a);
-        result->a = calc_op (op, srcval.a, dst->a, srcalpha.a, dst->a);
-    }
-}
 
 static double
 round_channel (double p, int m)
@@ -1352,42 +1137,6 @@ pixel_checker_get_masks (const pixel_checker_t *checker,
         *bm = checker->bm;
 }
 
-void
-pixel_checker_convert_pixel_to_color (const pixel_checker_t *checker,
-                                      uint32_t pixel, color_t *color)
-{
-    int a, r, g, b;
-
-    pixel_checker_split_pixel (checker, pixel, &a, &r, &g, &b);
-
-    if (checker->am == 0)
-        color->a = 1.0;
-    else
-        color->a = a / (double)(checker->am >> checker->as);
-
-    if (checker->rm == 0)
-        color->r = 0.0;
-    else
-        color->r = r / (double)(checker->rm >> checker->rs);
-
-    if (checker->gm == 0)
-        color->g = 0.0;
-    else
-        color->g = g / (double)(checker->gm >> checker->gs);
-
-    if (checker->bm == 0)
-        color->b = 0.0;
-    else
-        color->b = b / (double)(checker->bm >> checker->bs);
-
-    if (PIXMAN_FORMAT_TYPE (checker->format) == PIXMAN_TYPE_ARGB_SRGB)
-    {
-	color->r = convert_srgb_to_linear (color->r);
-	color->g = convert_srgb_to_linear (color->g);
-	color->b = convert_srgb_to_linear (color->b);
-    }
-}
-
 static int32_t
 convert (double v, uint32_t width, uint32_t mask, uint32_t shift, double def)
 {
@@ -1402,64 +1151,8 @@ convert (double v, uint32_t width, uint32_t mask, uint32_t shift, double def)
     return r;
 }
 
-static void
-get_limits (const pixel_checker_t *checker, double limit,
-	    color_t *color,
-	    int *ao, int *ro, int *go, int *bo)
-{
-    color_t tmp;
 
-    if (PIXMAN_FORMAT_TYPE (checker->format) == PIXMAN_TYPE_ARGB_SRGB)
-    {
-	tmp.a = color->a;
-	tmp.r = convert_linear_to_srgb (color->r);
-	tmp.g = convert_linear_to_srgb (color->g);
-	tmp.b = convert_linear_to_srgb (color->b);
-
-	color = &tmp;
-    }
-    
-    *ao = convert (color->a + limit, checker->aw, checker->am, checker->as, 1.0);
-    *ro = convert (color->r + limit, checker->rw, checker->rm, checker->rs, 0.0);
-    *go = convert (color->g + limit, checker->gw, checker->gm, checker->gs, 0.0);
-    *bo = convert (color->b + limit, checker->bw, checker->bm, checker->bs, 0.0);
-}
 
 /* The acceptable deviation in units of [0.0, 1.0]
  */
 #define DEVIATION (0.0128)
-
-void
-pixel_checker_get_max (const pixel_checker_t *checker, color_t *color,
-		       int *am, int *rm, int *gm, int *bm)
-{
-    get_limits (checker, DEVIATION, color, am, rm, gm, bm);
-}
-
-void
-pixel_checker_get_min (const pixel_checker_t *checker, color_t *color,
-		       int *am, int *rm, int *gm, int *bm)
-{
-    get_limits (checker, - DEVIATION, color, am, rm, gm, bm);
-}
-
-pixman_bool_t
-pixel_checker_check (const pixel_checker_t *checker, uint32_t pixel,
-		     color_t *color)
-{
-    int32_t a_lo, a_hi, r_lo, r_hi, g_lo, g_hi, b_lo, b_hi;
-    int32_t ai, ri, gi, bi;
-    pixman_bool_t result;
-
-    pixel_checker_get_min (checker, color, &a_lo, &r_lo, &g_lo, &b_lo);
-    pixel_checker_get_max (checker, color, &a_hi, &r_hi, &g_hi, &b_hi);
-    pixel_checker_split_pixel (checker, pixel, &ai, &ri, &gi, &bi);
-
-    result =
-	a_lo <= ai && ai <= a_hi	&&
-	r_lo <= ri && ri <= r_hi	&&
-	g_lo <= gi && gi <= g_hi	&&
-	b_lo <= bi && bi <= b_hi;
-
-    return result;
-}
